@@ -1,0 +1,58 @@
+@baseUrl = http://localhost:3000/api/sheets
+# TODO: Replace with your actual Google Sheet ID
+@spreadsheetId = 1WZJFCFmbKdjJkUxQpeuSRaL67jzGek112wquf4L3Nw0
+@sheetName = Sheet1
+# Optional: Set API key if API_KEY is configured in .env
+# @apiKey = your-api-key-here
+
+### Health Check
+GET http://localhost:3000/health
+
+### 1. Read Data (GET)
+# Retrieves values provided in the A1:E10 range
+GET {{baseUrl}}/{{spreadsheetId}}/{{sheetName}}!A1:J18
+
+### 1b. Read Data with Pagination (GET)
+# Retrieves paginated values (page 1, 5 items per page)
+GET {{baseUrl}}/{{spreadsheetId}}/{{sheetName}}!A1:J100?page=1&limit=5
+
+### 2. Append Data (POST)
+# Appends a new user to the sheet
+POST {{baseUrl}}/{{spreadsheetId}}/{{sheetName}}!A1
+Content-Type: application/json
+
+{
+  "values": [
+    ["Alice Tester", "alice@example.com", "Pending"]
+  ]
+}
+
+### 3. Update Data (PUT)
+# Updates the data starting at cell A2
+PUT {{baseUrl}}/{{spreadsheetId}}/{{sheetName}}!A2
+Content-Type: application/json
+
+{
+  "values": [
+    ["Alice Updated", "alice.new@example.com", "Active"]
+  ]
+}
+
+### 3b. Update Data by Value (PUT)
+# Searches Column B for "alice.new@example.com" and updates that row
+PUT {{baseUrl}}/{{spreadsheetId}}/{{sheetName}}/alice.new@example.com?column=B
+Content-Type: application/json
+
+{
+  "values": [
+    ["Alice Final", "alice.final@example.com", "Closed"]
+  ]
+}
+
+### 4. Delete Data by Value (DELETE)
+# Searches Column B for the email and deletes that row
+DELETE {{baseUrl}}/{{spreadsheetId}}/{{sheetName}}/Willow Zane?column=B
+
+### 5. Delete Data by Row Index (DELETE)
+# Deletes the 5th physical row in the sheet
+DELETE {{baseUrl}}/{{spreadsheetId}}/{{sheetName}}/5

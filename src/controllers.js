@@ -1,11 +1,12 @@
 const { getSheetsClient } = require('./auth');
 const { getSheetId } = require('./utils');
 
-// GET: Read data from a range
-// Route: GET /:spreadsheetId/:range
+// GET: Read data from a range with optional pagination
+// Route: GET /:spreadsheetId/:range?page=1&limit=100
 async function readData(req, res) {
   try {
     const { spreadsheetId, range } = req.params;
+    const { page, limit } = req.query;
     const sheets = await getSheetsClient();
 
     const response = await sheets.spreadsheets.values.get({
@@ -13,9 +14,31 @@ async function readData(req, res) {
       range,
     });
 
+    const allData = response.data.values || [];
+
+    // If pagination params provided, return paginated results
+    if (page && limit) {
+      const pageNum = parseInt(page) || 1;
+      const limitNum = parseInt(limit) || 100;
+      const startIndex = (pageNum - 1) * limitNum;
+      const paginatedData = allData.slice(startIndex, startIndex + limitNum);
+
+      return res.json({
+        success: true,
+        data: paginatedData,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: allData.length,
+          totalPages: Math.ceil(allData.length / limitNum)
+        }
+      });
+    }
+
+    // Default: return all data
     res.json({
       success: true,
-      data: response.data.values,
+      data: allData,
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -57,6 +80,63 @@ async function updateData(req, res) {
     const { spreadsheetId, range } = req.params;
     const { values } = req.body;
     const sheets = await getSheetsClient();
+
+    const response = await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: 'USER_ENTERED',
+      resource: {
+        values,
+      },
+    });
+
+    res.json({
+      success: true,
+      updates: response.data,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// PUT: Update data by searching for a value (or by row index)
+// Route: PUT /:spreadsheetId/:sheetName/:value?column=A
+async function updateDataByValue(req, res) {
+  try {
+    const { spreadsheetId, sheetName, value } = req.params; // value acts like rowIndex in deleteRow
+    const { column } = req.query;
+    const { values } = req.body;
+    const sheets = await getSheetsClient();
+    
+    let rowToUpdate;
+
+    // 1. SEARCH MODE: If a column is specified, find the row by value
+    if (column) {
+      const readResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!${column}:${column}`,
+      });
+
+      const rows = readResponse.data.values || [];
+      const foundIndex = rows.findIndex(r => r && r[0] == value);
+
+      if (foundIndex === -1) {
+        return res.status(404).json({ success: false, error: `Value '${value}' not found in column ${column}` });
+      }
+      
+      rowToUpdate = foundIndex + 1; 
+
+    } else {
+      // 2. DIRECT MODE
+      rowToUpdate = parseInt(value);
+    }
+
+    if (isNaN(rowToUpdate) || rowToUpdate < 1) {
+      return res.status(400).json({ success: false, error: 'Invalid row index or lookup value' });
+    }
+
+    // Start updating from Column A of the found row
+    const range = `${sheetName}!A${rowToUpdate}`;
 
     const response = await sheets.spreadsheets.values.update({
       spreadsheetId,
@@ -152,5 +232,6 @@ module.exports = {
   readData,
   appendData,
   updateData,
+  updateDataByValue,
   deleteRow,
 };

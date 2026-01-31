@@ -55,7 +55,10 @@ Adds a new row of data to the sheet.
     ```
 
 ### 3. Update Data (PUT)
-Updates data in a specific range.
+Updates data in a specific range or by searching for a row based on a value.
+
+#### Option A: Update by Range (Direct)
+Updates data starting at a specific cell location.
 
 *   **URL:** `/:spreadsheetId/:range`
 *   **Method:** `PUT`
@@ -67,6 +70,22 @@ Updates data in a specific range.
       ]
     }
     ```
+
+#### Option B: Update by Value (Search)
+Searches for a value in a column to identify the row, then updates that row (starting at column A).
+
+*   **URL:** `/:spreadsheetId/:sheetName/:value?column=ColumnLetter`
+*   **Method:** `PUT`
+*   **Query Param:** `column` - The column letter to search in.
+*   **Body:**
+    ```json
+    {
+      "values": [
+        ["Updated Name", "updated@example.com"]
+      ]
+    }
+    ```
+*   **Example:** `PUT /api/sheets/1xB7...ID/Sheet1/john@example.com?column=B`
 
 ### 4. Delete Data (DELETE)
 Deletes an entire row. Can be done by physical row number OR by searching for a value in a column.
