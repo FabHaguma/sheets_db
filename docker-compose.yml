@@ -1,0 +1,15 @@
+services:
+  backend_sheets_db:
+    image: backend_sheets_db
+    build: .
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+    networks:
+      - caddy_network
+    volumes:
+      - ./service_account.json:/app/service_account.json:ro
+
+networks:
+  caddy_network:
+    external: true
